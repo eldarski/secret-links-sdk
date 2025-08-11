@@ -2,7 +2,7 @@
 import 'jest';
 
 // Mock fetch for testing
-global.fetch = require('jest-fetch-mock');
+global.fetch = jest.fn();
 
 // Mock browser APIs
 Object.defineProperty(window, 'Notification', {
@@ -17,14 +17,15 @@ Object.defineProperty(window, 'Notification', {
   }
 });
 
-// Mock console methods to reduce noise in tests
-global.console = {
-  ...console,
-  log: jest.fn(),
-  error: jest.fn(),
-  warn: jest.fn(),
-  info: jest.fn()
-};
+// Mock console methods to reduce noise in tests (optional - can be enabled for cleaner test output)
+// global.console = {
+//   ...console,
+//   log: jest.fn(),
+//   error: jest.fn(),
+//   warn: jest.fn(),
+//   info: jest.fn()
+// };
 
 // Mock setTimeout/clearTimeout for testing polling
-jest.useFakeTimers();
+// Note: Be careful with fake timers in tests - use sparingly
+// jest.useFakeTimers();
