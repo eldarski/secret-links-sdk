@@ -37,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Distribution
 - NPM package: `secret-links-sdk`
 - CDN: `https://cdn.jsdelivr.net/npm/secret-links-sdk@1.0.0/dist/secret-links-sdk.min.js`
-- GitHub: `https://github.com/secret-links/sdk`
+- GitHub: `https://github.com/eldarski/secret-links-sdk`
 
-[Unreleased]: https://github.com/secret-links/sdk/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/secret-links/sdk/releases/tag/v1.0.0
+[Unreleased]: https://github.com/eldarski/secret-links-sdk/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/eldarski/secret-links-sdk/releases/tag/v1.0.0

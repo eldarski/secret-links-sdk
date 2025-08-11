@@ -6,7 +6,7 @@ Thank you for your interest in contributing to the Secret Links SDK! This docume
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/secret-links/sdk.git
+   git clone https://github.com/eldarski/secret-links-sdk.git
    cd sdk
    ```
 
@@ -174,8 +174,8 @@ We use [Semantic Versioning](https://semver.org/):
 
 ## Getting Help
 
-- **Issues**: [GitHub Issues](https://github.com/secret-links/sdk/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/secret-links/sdk/discussions)
+- **Issues**: [GitHub Issues](https://github.com/eldarski/secret-links-sdk/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/eldarski/secret-links-sdk/discussions)
 - **Documentation**: [README.md](README.md) and inline code docs
 
 ## Code of Conduct

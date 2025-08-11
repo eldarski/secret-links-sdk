@@ -379,9 +379,9 @@ MIT License - see LICENSE file for details.
 
 ## 📞 Support
 
-- **Documentation**: [GitHub Wiki](https://github.com/secret-links/sdk/wiki)
-- **Issues**: [GitHub Issues](https://github.com/secret-links/sdk/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/secret-links/sdk/discussions)
+- **Documentation**: [GitHub Wiki](https://github.com/eldarski/secret-links-sdk/wiki)
+- **Issues**: [GitHub Issues](https://github.com/eldarski/secret-links-sdk/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/eldarski/secret-links-sdk/discussions)
 
 ## 🎯 Roadmap
 

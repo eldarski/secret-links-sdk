@@ -38,12 +38,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/secret-links/sdk"
+    "url": "https://github.com/eldarski/secret-links-sdk"
   },
   "bugs": {
-    "url": "https://github.com/secret-links/sdk/issues"
+    "url": "https://github.com/eldarski/secret-links-sdk/issues"
   },
-  "homepage": "https://github.com/secret-links/sdk#readme",
+  "homepage": "https://github.com/eldarski/secret-links-sdk#readme",
   "devDependencies": {
     "@rollup/plugin-node-resolve": "^15.0.0",
     "@rollup/plugin-typescript": "^11.0.0",
