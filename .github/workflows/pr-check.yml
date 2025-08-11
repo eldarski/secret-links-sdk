@@ -28,8 +28,8 @@ jobs:
         echo "Checking for breaking changes in API..."
         # This would typically run API compatibility checks
         
-    - name: Run linting (temporarily disabled) 
-      run: echo "Linting temporarily disabled due to parent directory ESLint config interference"
+    - name: Run linting
+      run: npm run lint
       
     - name: Run type checking
       run: npm run type-check

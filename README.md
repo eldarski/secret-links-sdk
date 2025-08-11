@@ -360,10 +360,9 @@ npm run test:coverage # Run tests with coverage
 npm install           # Install dependencies
 npm run build         # Build the SDK
 npm run build:watch   # Build in watch mode
+npm run lint          # Run ESLint (may show fallback locally)
 npm run type-check    # Run TypeScript checks
 ```
-
-> **Note**: ESLint linting is temporarily disabled due to parent directory config interference during the repository separation process. This will be re-enabled once the SDK is fully independent.
 
 ## 📄 License
 
