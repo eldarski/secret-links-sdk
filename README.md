@@ -383,17 +383,6 @@ MIT License - see LICENSE file for details.
 - **Issues**: [GitHub Issues](https://github.com/eldarski/secret-links-sdk/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/eldarski/secret-links-sdk/discussions)
 
-## 🎯 Roadmap
-
-- [ ] WebSocket support for real-time updates
-- [ ] Batch polling for multiple links
-- [ ] Custom encryption key support
-- [ ] React Native support
-- [ ] Link grouping and management
-- [ ] Persistent storage for listener recovery
-- [ ] Advanced retry strategies
-- [ ] Webhook signature verification
-
 ---
 
 Made with ❤️ by the Secret Links team
