@@ -1,0 +1,856 @@
+# Secret Links SDK Integration Guide for LLM Coding Assistants
+
+This document provides comprehensive instructions for LLM coding assistants to help developers integrate the Secret Links SDK into their applications.
+
+## Overview
+
+The Secret Links SDK enables websites to integrate magic link functionality without relying on external infrastructure. Users paste Secret Links URLs into input fields, and the SDK handles validation, polling, and payload delivery through the website owner's backend.
+
+**Key Architecture**: User Pastes Link → SDK Validates → Website Backend Polls → SDK Delivers Payload
+
+## Quick Integration Checklist
+
+When a developer asks to integrate Secret Links SDK, follow these steps:
+
+### 1. Backend Integration (Required First)
+- Create a `/api/secret-links/poll` endpoint (or similar)
+- Implement polling logic to Secret Links API
+- Add proper error handling and rate limiting
+- Return standardized response format
+
+### 2. Frontend Integration
+- Install SDK: `npm install secret-links-sdk` or use CDN
+- Initialize SDK with polling endpoint
+- Add UI for link input and message display
+- Handle callbacks for payloads, errors, and status changes
+
+### 3. Testing & Deployment
+- Test with sample Secret Links URLs
+- Implement proper error handling
+- Add logging and monitoring
+- Deploy backend endpoint before frontend
+
+## Backend Implementation Templates
+
+### Express.js Template
+```javascript
+const express = require('express');
+const fetch = require('node-fetch'); // or axios, got, etc.
+const app = express();
+
+app.use(express.json());
+app.use(require('cors')()); // Enable CORS for frontend
+
+// Required: Secret Links polling endpoint
+app.post('/api/secret-links/poll', async (req, res) => {
+  const { token, type, password, clientId, timestamp, lastSeen } = req.body;
+  
+  // Validate required fields
+  if (!token || !type) {
+    return res.status(400).json({ 
+      error: 'Missing required fields: token and type are required' 
+    });
+  }
+  
+  try {
+    // Poll Secret Links API
+    const response = await fetch(`https://secret.annai.ai/api/links/${token}/poll`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        password,
+        clientId: clientId || `backend-${Date.now()}`,
+        timestamp: timestamp || Date.now(),
+        lastSeen
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    // Return standardized response
+    res.json({
+      hasNewContent: data.hasNewContent,
+      payload: data.payload,
+      linkStatus: data.linkStatus || 'active',
+      nextPollIn: data.nextPollIn || (type === 'ping' ? 10000 : 60000)
+    });
+    
+  } catch (error) {
+    res.status(500).json({ 
+      error: error.message,
+      hasNewContent: false,
+      linkStatus: 'error'
+    });
+  }
+});
+```
+
+### Next.js API Route Template
+```javascript
+// pages/api/secret-links/poll.js or app/api/secret-links/poll/route.js
+
+export async function POST(req) {
+  const { token, type, password, clientId, timestamp, lastSeen } = await req.json();
+  
+  if (!token || !type) {
+    return Response.json(
+      { error: 'Missing required fields: token and type are required' },
+      { status: 400 }
+    );
+  }
+  
+  try {
+    const response = await fetch(`https://secret.annai.ai/api/links/${token}/poll`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        password,
+        clientId: clientId || `nextjs-${Date.now()}`,
+        timestamp: timestamp || Date.now(),
+        lastSeen
+      })
+    });
+    
+    const data = await response.json();
+    
+    return Response.json({
+      hasNewContent: data.hasNewContent,
+      payload: data.payload,
+      linkStatus: data.linkStatus || 'active',
+      nextPollIn: data.nextPollIn || (type === 'ping' ? 10000 : 60000)
+    });
+    
+  } catch (error) {
+    return Response.json(
+      { error: error.message, hasNewContent: false, linkStatus: 'error' },
+      { status: 500 }
+    );
+  }
+}
+```
+
+## Frontend Integration Templates
+
+### React Template
+```tsx
+import React, { useState, useMemo, useCallback } from 'react';
+import { SecretLinksSDK, PayloadData, LinkInfo } from 'secret-links-sdk';
+
+interface Message {
+  id: string;
+  payload: PayloadData;
+  timestamp: number;
+}
+
+export function SecretLinksIntegration() {
+  const [linkUrl, setLinkUrl] = useState('');
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isListening, setIsListening] = useState(false);
+  const [listenerId, setListenerId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Initialize SDK
+  const sdk = useMemo(() => new SecretLinksSDK({
+    pollingEndpoint: '/api/secret-links/poll',
+    debug: process.env.NODE_ENV === 'development',
+    onError: (error) => {
+      console.error('SDK Error:', error);
+      setError(error.message);
+    }
+  }), []);
+
+  const handleStartListening = useCallback(async () => {
+    if (!linkUrl.trim()) {
+      setError('Please enter a Secret Links URL');
+      return;
+    }
+
+    try {
+      setError(null);
+      
+      const id = await sdk.startListening(linkUrl, {
+        onPayload: (payload: PayloadData, linkInfo: LinkInfo) => {
+          const message: Message = {
+            id: `${Date.now()}-${Math.random()}`,
+            payload,
+            timestamp: Date.now()
+          };
+          setMessages(prev => [message, ...prev]);
+        },
+        onError: (error: Error) => {
+          setError(`Link error: ${error.message}`);
+        },
+        onStatusChange: (status) => {
+          if (status !== 'active') {
+            setIsListening(false);
+            setListenerId(null);
+            setError(`Link is now ${status}`);
+          }
+        }
+      });
+      
+      setListenerId(id);
+      setIsListening(true);
+      
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to start listening');
+    }
+  }, [linkUrl, sdk]);
+
+  const handleStop = useCallback(() => {
+    if (listenerId) {
+      sdk.stopListening(listenerId);
+      setIsListening(false);
+      setListenerId(null);
+    }
+  }, [listenerId, sdk]);
+
+  return (
+    <div className="max-w-2xl mx-auto p-6">
+      <h2 className="text-2xl font-bold mb-6">Secret Links Integration</h2>
+      
+      {/* Input Section */}
+      <div className="mb-6">
+        <input
+          type="url"
+          value={linkUrl}
+          onChange={(e) => setLinkUrl(e.target.value)}
+          placeholder="Paste Secret Links URL here..."
+          disabled={isListening}
+          className="w-full p-3 border rounded-lg"
+        />
+        
+        <div className="flex gap-2 mt-3">
+          <button
+            onClick={handleStartListening}
+            disabled={isListening || !linkUrl.trim()}
+            className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
+          >
+            {isListening ? 'Listening...' : 'Start Listening'}
+          </button>
+          
+          <button
+            onClick={handleStop}
+            disabled={!isListening}
+            className="px-4 py-2 bg-red-600 text-white rounded disabled:opacity-50"
+          >
+            Stop
+          </button>
+        </div>
+      </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded mb-4">
+          {error}
+          <button onClick={() => setError(null)} className="ml-2 underline">
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Messages */}
+      <div>
+        <h3 className="text-lg font-semibold mb-3">Messages ({messages.length})</h3>
+        {messages.length === 0 ? (
+          <p className="text-gray-500">No messages received yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {messages.map((message) => (
+              <div key={message.id} className="p-4 border rounded-lg">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium text-blue-600">
+                    {message.payload.type}
+                  </span>
+                  <span className="text-sm text-gray-500">
+                    {new Date(message.timestamp).toLocaleTimeString()}
+                  </span>
+                </div>
+                <pre className="text-sm bg-gray-100 p-2 rounded overflow-x-auto">
+                  {JSON.stringify(message.payload.data, null, 2)}
+                </pre>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+```
+
+### Vue.js Template
+```vue
+<template>
+  <div class="max-w-2xl mx-auto p-6">
+    <h2 class="text-2xl font-bold mb-6">Secret Links Integration</h2>
+    
+    <div class="mb-6">
+      <input
+        v-model="linkUrl"
+        type="url"
+        placeholder="Paste Secret Links URL here..."
+        :disabled="isListening"
+        class="w-full p-3 border rounded-lg"
+      />
+      
+      <div class="flex gap-2 mt-3">
+        <button
+          @click="startListening"
+          :disabled="isListening || !linkUrl.trim()"
+          class="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
+        >
+          {{ isListening ? 'Listening...' : 'Start Listening' }}
+        </button>
+        
+        <button
+          @click="stopListening"
+          :disabled="!isListening"
+          class="px-4 py-2 bg-red-600 text-white rounded disabled:opacity-50"
+        >
+          Stop
+        </button>
+      </div>
+    </div>
+
+    <div v-if="error" class="p-3 bg-red-100 border border-red-400 text-red-700 rounded mb-4">
+      {{ error }}
+      <button @click="error = null" class="ml-2 underline">Dismiss</button>
+    </div>
+
+    <div>
+      <h3 class="text-lg font-semibold mb-3">Messages ({{ messages.length }})</h3>
+      <div v-if="messages.length === 0" class="text-gray-500">
+        No messages received yet.
+      </div>
+      <div v-else class="space-y-3">
+        <div v-for="message in messages" :key="message.id" class="p-4 border rounded-lg">
+          <div class="flex justify-between items-center mb-2">
+            <span class="text-sm font-medium text-blue-600">
+              {{ message.payload.type }}
+            </span>
+            <span class="text-sm text-gray-500">
+              {{ new Date(message.timestamp).toLocaleTimeString() }}
+            </span>
+          </div>
+          <pre class="text-sm bg-gray-100 p-2 rounded overflow-x-auto">{{ JSON.stringify(message.payload.data, null, 2) }}</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script>
+import { SecretLinksSDK } from 'secret-links-sdk';
+
+export default {
+  data() {
+    return {
+      linkUrl: '',
+      messages: [],
+      isListening: false,
+      listenerId: null,
+      error: null,
+      sdk: null
+    };
+  },
+  
+  mounted() {
+    this.sdk = new SecretLinksSDK({
+      pollingEndpoint: '/api/secret-links/poll',
+      debug: process.env.NODE_ENV === 'development',
+      onError: (error) => {
+        console.error('SDK Error:', error);
+        this.error = error.message;
+      }
+    });
+  },
+  
+  beforeUnmount() {
+    if (this.sdk) {
+      this.sdk.stopAll();
+    }
+  },
+  
+  methods: {
+    async startListening() {
+      if (!this.linkUrl.trim()) {
+        this.error = 'Please enter a Secret Links URL';
+        return;
+      }
+
+      try {
+        this.error = null;
+        
+        this.listenerId = await this.sdk.startListening(this.linkUrl, {
+          onPayload: (payload) => {
+            const message = {
+              id: `${Date.now()}-${Math.random()}`,
+              payload,
+              timestamp: Date.now()
+            };
+            this.messages.unshift(message);
+          },
+          onError: (error) => {
+            this.error = `Link error: ${error.message}`;
+          },
+          onStatusChange: (status) => {
+            if (status !== 'active') {
+              this.isListening = false;
+              this.listenerId = null;
+              this.error = `Link is now ${status}`;
+            }
+          }
+        });
+        
+        this.isListening = true;
+        
+      } catch (error) {
+        this.error = error.message || 'Failed to start listening';
+      }
+    },
+    
+    stopListening() {
+      if (this.listenerId && this.sdk) {
+        this.sdk.stopListening(this.listenerId);
+        this.isListening = false;
+        this.listenerId = null;
+      }
+    }
+  }
+};
+</script>
+```
+
+### Vanilla JavaScript Template
+```html
+<div id="secret-links-container">
+  <h2>Secret Links Integration</h2>
+  
+  <div>
+    <input id="linkInput" type="url" placeholder="Paste Secret Links URL here..." />
+    <div style="margin-top: 10px;">
+      <button id="startBtn">Start Listening</button>
+      <button id="stopBtn" disabled>Stop</button>
+      <button id="clearBtn" disabled>Clear Messages</button>
+    </div>
+  </div>
+  
+  <div id="error" style="display: none;"></div>
+  <div id="messages">
+    <h3>Messages (<span id="count">0</span>)</h3>
+    <div id="messagesList">No messages received yet.</div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/secret-links-sdk@latest/dist/secret-links-sdk.min.js"></script>
+<script>
+const sdk = new SecretLinksSDK.SecretLinksSDK({
+  pollingEndpoint: '/api/secret-links/poll',
+  debug: true
+});
+
+let currentListenerId = null;
+let messages = [];
+
+const elements = {
+  linkInput: document.getElementById('linkInput'),
+  startBtn: document.getElementById('startBtn'),
+  stopBtn: document.getElementById('stopBtn'),
+  clearBtn: document.getElementById('clearBtn'),
+  error: document.getElementById('error'),
+  count: document.getElementById('count'),
+  messagesList: document.getElementById('messagesList')
+};
+
+function showError(message) {
+  elements.error.textContent = message;
+  elements.error.style.display = 'block';
+  elements.error.style.color = 'red';
+}
+
+function hideError() {
+  elements.error.style.display = 'none';
+}
+
+function updateUI() {
+  const isListening = currentListenerId !== null;
+  elements.startBtn.disabled = isListening;
+  elements.stopBtn.disabled = !isListening;
+  elements.clearBtn.disabled = messages.length === 0;
+  elements.linkInput.disabled = isListening;
+  elements.count.textContent = messages.length;
+  
+  elements.startBtn.textContent = isListening ? 'Listening...' : 'Start Listening';
+}
+
+function renderMessages() {
+  if (messages.length === 0) {
+    elements.messagesList.innerHTML = 'No messages received yet.';
+    return;
+  }
+  
+  elements.messagesList.innerHTML = messages.map((msg, i) => `
+    <div style="border: 1px solid #ccc; margin: 10px 0; padding: 10px; border-radius: 5px;">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+        <strong>${msg.payload.type}</strong>
+        <small>${new Date(msg.timestamp).toLocaleTimeString()}</small>
+      </div>
+      <pre style="background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto;">${JSON.stringify(msg.payload.data, null, 2)}</pre>
+    </div>
+  `).join('');
+}
+
+elements.startBtn.addEventListener('click', async () => {
+  const linkUrl = elements.linkInput.value.trim();
+  
+  if (!linkUrl) {
+    showError('Please enter a Secret Links URL');
+    return;
+  }
+  
+  try {
+    hideError();
+    
+    currentListenerId = await sdk.startListening(linkUrl, {
+      onPayload: (payload) => {
+        messages.unshift({
+          id: Date.now(),
+          payload,
+          timestamp: Date.now()
+        });
+        renderMessages();
+        updateUI();
+      },
+      onError: (error) => showError(`Link error: ${error.message}`),
+      onStatusChange: (status) => {
+        if (status !== 'active') {
+          currentListenerId = null;
+          updateUI();
+          showError(`Link is now ${status}`);
+        }
+      }
+    });
+    
+    updateUI();
+    
+  } catch (error) {
+    showError(`Failed to start listening: ${error.message}`);
+  }
+});
+
+elements.stopBtn.addEventListener('click', () => {
+  if (currentListenerId) {
+    sdk.stopListening(currentListenerId);
+    currentListenerId = null;
+    updateUI();
+    hideError();
+  }
+});
+
+elements.clearBtn.addEventListener('click', () => {
+  messages = [];
+  renderMessages();
+  updateUI();
+});
+
+// Initialize
+updateUI();
+</script>
+```
+
+## Common Integration Patterns
+
+### 1. Form Integration Pattern
+When integrating with forms, add a Secret Links input field:
+
+```html
+<form>
+  <!-- Other form fields -->
+  
+  <div class="form-group">
+    <label>Secret Links Notification (Optional)</label>
+    <input 
+      type="url" 
+      name="secretLink"
+      placeholder="Paste Secret Links URL for real-time updates..."
+      pattern="https://secret\.annai\.ai/link/.*"
+    />
+    <small>Get notified when this form is processed</small>
+  </div>
+  
+  <button type="submit">Submit</button>
+</form>
+```
+
+### 2. Dashboard Integration Pattern
+For admin dashboards, create a dedicated Secret Links section:
+
+```jsx
+function Dashboard() {
+  return (
+    <div className="dashboard">
+      {/* Other dashboard sections */}
+      
+      <section className="secret-links-section">
+        <h3>Live Notifications</h3>
+        <SecretLinksIntegration />
+      </section>
+    </div>
+  );
+}
+```
+
+### 3. Real-time Status Updates
+For monitoring systems, integrate with existing status displays:
+
+```jsx
+function StatusMonitor() {
+  const [systemStatus, setSystemStatus] = useState('unknown');
+  
+  useEffect(() => {
+    const sdk = new SecretLinksSDK({
+      pollingEndpoint: '/api/secret-links/poll'
+    });
+    
+    // Listen to system status updates via Secret Links
+    sdk.startListening('https://secret.annai.ai/link/system-status-token', {
+      onPayload: (payload) => {
+        setSystemStatus(payload.data.status);
+      }
+    });
+    
+    return () => sdk.stopAll();
+  }, []);
+  
+  return (
+    <div className={`status-indicator ${systemStatus}`}>
+      System Status: {systemStatus}
+    </div>
+  );
+}
+```
+
+## Error Handling Best Practices
+
+### 1. Network Error Handling
+```javascript
+const sdk = new SecretLinksSDK({
+  pollingEndpoint: '/api/secret-links/poll',
+  onError: (error) => {
+    if (error.message.includes('fetch')) {
+      // Network error
+      showNotification('Connection issue. Retrying...', 'warning');
+    } else if (error.message.includes('401')) {
+      // Authentication error
+      showNotification('Please check your API configuration', 'error');
+    } else {
+      // Other errors
+      showNotification(`Error: ${error.message}`, 'error');
+    }
+  }
+});
+```
+
+### 2. Link Validation with User Feedback
+```javascript
+function validateAndStartListening(linkUrl) {
+  // Pre-validate the link
+  const linkInfo = sdk.validateLink(linkUrl);
+  
+  if (!linkInfo.isValid) {
+    showError('Invalid Secret Links URL. Please check the format.');
+    return;
+  }
+  
+  if (linkInfo.hasPassword && !confirm('This link requires a password. Continue?')) {
+    return;
+  }
+  
+  // Start listening with proper error handling
+  sdk.startListening(linkUrl, {
+    onPayload: handlePayload,
+    onError: (error, linkInfo) => {
+      showError(`Error with link ${linkInfo.token.substring(0, 8)}...: ${error.message}`);
+    },
+    onStatusChange: (status, linkInfo) => {
+      if (status === 'expired') {
+        showWarning(`Link ${linkInfo.token.substring(0, 8)}... has expired`);
+      } else if (status === 'exhausted') {
+        showInfo(`Link ${linkInfo.token.substring(0, 8)}... has been fully consumed`);
+      }
+    }
+  });
+}
+```
+
+## Security Considerations
+
+### 1. Backend Rate Limiting
+Always implement rate limiting on your polling endpoint:
+
+```javascript
+const rateLimit = require('express-rate-limit');
+
+const secretLinksRateLimit = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 100, // 100 requests per minute per IP
+  message: { error: 'Too many polling requests' }
+});
+
+app.use('/api/secret-links/poll', secretLinksRateLimit);
+```
+
+### 2. Input Validation
+Validate all inputs on both frontend and backend:
+
+```javascript
+// Backend validation
+function validatePollRequest(req, res, next) {
+  const { token, type } = req.body;
+  
+  if (!token || typeof token !== 'string' || token.length < 16) {
+    return res.status(400).json({ error: 'Invalid token' });
+  }
+  
+  if (!type || !['ping', 'webhook'].includes(type)) {
+    return res.status(400).json({ error: 'Invalid type' });
+  }
+  
+  next();
+}
+```
+
+### 3. API Key Protection
+If using API keys, store them securely:
+
+```javascript
+// Use environment variables
+const SDK_API_KEY = process.env.SECRET_LINKS_SDK_API_KEY;
+
+const sdk = new SecretLinksSDK({
+  pollingEndpoint: '/api/secret-links/poll',
+  apiKey: SDK_API_KEY
+});
+```
+
+## Testing Integration
+
+### 1. Test Secret Links URLs
+For testing, you can create test links at https://secret.annai.ai
+
+### 2. Mock Backend for Development
+```javascript
+// Mock polling endpoint for development
+app.post('/api/secret-links/poll', (req, res) => {
+  const { token, type } = req.body;
+  
+  // Simulate different responses for testing
+  if (token.includes('test-ping')) {
+    return res.json({
+      hasNewContent: Math.random() > 0.7, // 30% chance of content
+      payload: {
+        type: 'ping',
+        timestamp: Date.now(),
+        data: { message: `Test ping message at ${new Date().toLocaleTimeString()}` }
+      },
+      linkStatus: 'active',
+      nextPollIn: 5000
+    });
+  }
+  
+  // Default: no content
+  res.json({
+    hasNewContent: false,
+    linkStatus: 'active',
+    nextPollIn: type === 'ping' ? 10000 : 60000
+  });
+});
+```
+
+## Deployment Checklist
+
+Before deploying Secret Links integration:
+
+1. **Backend Endpoint**
+   - [ ] Polling endpoint deployed and accessible
+   - [ ] Rate limiting implemented
+   - [ ] Error handling in place
+   - [ ] Logging configured
+
+2. **Frontend Integration**
+   - [ ] SDK properly imported/loaded
+   - [ ] Error states handled
+   - [ ] User feedback implemented
+   - [ ] Cleanup on component unmount
+
+3. **Security**
+   - [ ] Input validation on both ends
+   - [ ] CORS configured properly
+   - [ ] API keys stored securely
+   - [ ] No sensitive data in client code
+
+4. **Testing**
+   - [ ] Test with real Secret Links URLs
+   - [ ] Verify error handling
+   - [ ] Check performance under load
+   - [ ] Test across different browsers
+
+## Troubleshooting Guide
+
+### Common Issues
+
+1. **"Failed to fetch" errors**
+   - Check CORS configuration
+   - Verify backend endpoint URL
+   - Check network connectivity
+
+2. **"Invalid Secret Link URL" errors**
+   - Verify URL format: `https://secret.annai.ai/link/[TOKEN]`
+   - Check for typos in the URL
+   - Ensure token is not expired
+
+3. **No messages received**
+   - Verify backend polling logic
+   - Check Secret Links API connectivity
+   - Ensure callbacks are properly set
+
+4. **High server load**
+   - Implement proper rate limiting
+   - Use adaptive polling intervals
+   - Monitor polling frequency
+
+### Debug Mode
+Always enable debug mode during development:
+
+```javascript
+const sdk = new SecretLinksSDK({
+  pollingEndpoint: '/api/secret-links/poll',
+  debug: process.env.NODE_ENV === 'development'
+});
+```
+
+## Performance Optimization
+
+1. **Efficient Polling**
+   - Use server-suggested intervals
+   - Implement exponential backoff
+   - Stop polling inactive links
+
+2. **Memory Management**
+   - Clean up listeners on component unmount
+   - Limit message history
+   - Use WeakMap for temporary data
+
+3. **Network Optimization**
+   - Batch multiple link polls if possible
+   - Use appropriate timeout values
+   - Implement retry logic with jitter
+
+---
+
+This guide provides comprehensive instructions for integrating the Secret Links SDK. Always refer to the latest documentation and examples in the SDK repository for the most up-to-date information.

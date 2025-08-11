@@ -1,0 +1,42 @@
+# Source files
+src/
+tests/
+examples/
+
+# Development files
+.github/
+.vscode/
+.idea/
+*.tgz
+
+# Configuration files
+.eslintrc.js
+jest.config.js
+rollup.config.js
+tsconfig.json
+
+# Development dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage and testing
+coverage/
+.nyc_output/
+*.lcov
+
+# Environment
+.env*
+
+# Temporary files
+.tmp/
+temp/
+.DS_Store
+
+# Documentation (except README)
+CONTRIBUTING.md
+llm.txt
+
+# Only include built files and essential docs
+# Included: dist/, README.md, LICENSE, CHANGELOG.md, package.json

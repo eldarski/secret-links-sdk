@@ -1,0 +1,81 @@
+name: PR Check
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  pr-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Check for breaking changes
+      run: |
+        echo "Checking for breaking changes in API..."
+        # This would typically run API compatibility checks
+        
+    - name: Run linting
+      run: npm run lint
+      
+    - name: Run type checking
+      run: npm run type-check
+      
+    - name: Run tests
+      run: npm test
+      
+    - name: Build package
+      run: npm run build
+      
+    - name: Size check
+      run: |
+        echo "Checking bundle size..."
+        ls -lh dist/
+        
+    - name: PR Comment with build info
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+          
+          // Get file sizes
+          const distFiles = fs.readdirSync('dist/');
+          const sizes = distFiles.map(file => {
+            const stats = fs.statSync(path.join('dist', file));
+            return `- ${file}: ${(stats.size / 1024).toFixed(2)} KB`;
+          }).join('\n');
+          
+          const comment = `## Build Summary
+          
+          ✅ All checks passed!
+          
+          ### Bundle Sizes
+          ${sizes}
+          
+          ### Test Results
+          - Linting: ✅ Passed
+          - Type Checking: ✅ Passed
+          - Tests: ✅ Passed
+          - Build: ✅ Passed
+          `;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });

@@ -1,0 +1,74 @@
+{
+  "name": "secret-links-sdk",
+  "version": "1.0.0",
+  "description": "JavaScript SDK for integrating Secret Links functionality into any website",
+  "main": "dist/secret-links-sdk.js",
+  "module": "dist/secret-links-sdk.esm.js",
+  "types": "dist/secret-links-sdk.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "build": "npm run clean && rollup -c",
+    "build:watch": "rollup -c -w",
+    "clean": "rm -rf dist",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src --ext .ts,.js",
+    "lint:fix": "eslint src --ext .ts,.js --fix",
+    "type-check": "tsc --noEmit",
+    "dev": "rollup -c -w",
+    "prepublishOnly": "npm run lint && npm run type-check && npm run test && npm run build",
+    "release": "npm run prepublishOnly && npm publish",
+    "release:beta": "npm run prepublishOnly && npm publish --tag beta"
+  },
+  "keywords": [
+    "secret-links",
+    "magic-links",
+    "polling",
+    "webhooks",
+    "javascript",
+    "sdk"
+  ],
+  "author": "Secret Links Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/secret-links/sdk"
+  },
+  "bugs": {
+    "url": "https://github.com/secret-links/sdk/issues"
+  },
+  "homepage": "https://github.com/secret-links/sdk#readme",
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^15.0.0",
+    "@rollup/plugin-typescript": "^11.0.0",
+    "@types/jest": "^29.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "jest": "^29.0.0",
+    "jest-environment-jsdom": "^29.0.0",
+    "rimraf": "^5.0.0",
+    "rollup": "^4.0.0",
+    "@rollup/plugin-terser": "^0.4.0",
+    "ts-jest": "^29.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "peerDependencies": {
+    "typescript": ">=4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "typescript": {
+      "optional": true
+    }
+  }
+}
