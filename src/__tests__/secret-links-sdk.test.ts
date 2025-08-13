@@ -19,7 +19,7 @@ describe('SecretLinksSDK', () => {
 
     it('should throw error for missing pollingEndpoint', () => {
       expect(() => {
-        new SecretLinksSDK({} as any);
+        new SecretLinksSDK({} as never);
       }).toThrow('pollingEndpoint is required');
     });
 

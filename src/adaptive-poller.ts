@@ -1,7 +1,6 @@
 import { debugLog } from './utils';
 
 export class AdaptivePoller {
-  private token: string;
   private baseInterval: number;
   public currentInterval: number;
   private backoffMultiplier: number;
@@ -9,8 +8,7 @@ export class AdaptivePoller {
   private consecutiveEmpty: number;
   private debug: boolean;
 
-  constructor(token: string, type: 'ping' | 'webhook', debug = false) {
-    this.token = token;
+  constructor(_token: string, type: 'ping' | 'webhook', debug = false) {
     this.baseInterval = type === 'ping' ? 10000 : 60000; // 10s for ping, 1min for webhook
     this.currentInterval = this.baseInterval;
     this.backoffMultiplier = 1.5;

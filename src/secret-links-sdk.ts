@@ -4,7 +4,7 @@ import { parseLink, validateSDKOptions, debugLog } from './utils';
 
 export class SecretLinksSDK {
   private pollingEndpoint: string;
-  private apiKey?: string;
+  private apiKey: string | undefined;
   private intervals: {
     ping: number;
     webhook: number;
@@ -12,7 +12,7 @@ export class SecretLinksSDK {
   private activeListeners: Map<string, LinkPoller>;
   private onError: (error: Error) => void;
   private debug: boolean;
-  private validation?: ValidationOptions;
+  private validation: ValidationOptions | undefined;
   private listenerCounter: number;
 
   constructor(options: SDKOptions) {
@@ -25,7 +25,7 @@ export class SecretLinksSDK {
       webhook: options.webhookInterval || 60000
     };
     this.activeListeners = new Map();
-    this.onError = options.onError || ((error: Error) => console.error('[SecretLinksSDK]', error));
+    this.onError = options.onError || this.defaultErrorHandler;
     this.debug = options.debug || false;
     this.validation = options.validation;
     this.listenerCounter = 0;
@@ -148,7 +148,7 @@ export class SecretLinksSDK {
   stopAll(): void {
     const activeCount = this.activeListeners.size;
     
-    for (const [listenerId, poller] of this.activeListeners) {
+    for (const [_listenerId, poller] of this.activeListeners) {
       poller.stop();
     }
     
@@ -226,9 +226,14 @@ export class SecretLinksSDK {
 
     return null;
   }
+
+  private defaultErrorHandler(error: Error): void {
+    // eslint-disable-next-line no-console
+    console.error('[SecretLinksSDK]', error);
+  }
 }
 
 // Export for CDN/browser usage
 if (typeof window !== 'undefined') {
-  (window as any).SecretLinksSDK = SecretLinksSDK;
+  (window as unknown as { SecretLinksSDK: typeof SecretLinksSDK }).SecretLinksSDK = SecretLinksSDK;
 }

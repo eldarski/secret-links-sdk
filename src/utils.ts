@@ -56,16 +56,24 @@ export function parseLink(url: string): LinkInfo {
   // Detect link type based on token patterns
   const type = detectLinkType(token);
 
-  return {
+  const linkInfo: LinkInfo = {
     isValid: true,
     token,
     type,
     hasPassword,
     hasEncryption,
-    domain,
-    password,
-    encryptionKey
+    domain
   };
+
+  if (password) {
+    linkInfo.password = password;
+  }
+
+  if (encryptionKey) {
+    linkInfo.encryptionKey = encryptionKey;
+  }
+
+  return linkInfo;
 }
 
 function detectLinkType(token: string): 'ping' | 'webhook' {
@@ -85,38 +93,41 @@ export function generateClientId(): string {
   return `sdk-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
 }
 
-export function validateSDKOptions(options: any): void {
-  if (!options) {
+export function validateSDKOptions(options: unknown): void {
+  if (!options || typeof options !== 'object') {
     throw new Error('SDK options are required');
   }
 
-  if (!options.pollingEndpoint) {
+  const opts = options as Record<string, unknown>;
+
+  if (!opts.pollingEndpoint) {
     throw new Error('pollingEndpoint is required in SDK options');
   }
 
-  if (typeof options.pollingEndpoint !== 'string') {
+  if (typeof opts.pollingEndpoint !== 'string') {
     throw new Error('pollingEndpoint must be a string');
   }
 
   // Validate polling endpoint URL
   try {
-    new URL(options.pollingEndpoint);
+    new URL(opts.pollingEndpoint);
   } catch {
     throw new Error('pollingEndpoint must be a valid URL');
   }
 
   // Validate intervals if provided
-  if (options.pingInterval !== undefined && (typeof options.pingInterval !== 'number' || options.pingInterval < 1000)) {
+  if (opts.pingInterval !== undefined && (typeof opts.pingInterval !== 'number' || opts.pingInterval < 1000)) {
     throw new Error('pingInterval must be a number >= 1000 (1 second)');
   }
 
-  if (options.webhookInterval !== undefined && (typeof options.webhookInterval !== 'number' || options.webhookInterval < 1000)) {
+  if (opts.webhookInterval !== undefined && (typeof opts.webhookInterval !== 'number' || opts.webhookInterval < 1000)) {
     throw new Error('webhookInterval must be a number >= 1000 (1 second)');
   }
 }
 
-export function debugLog(debug: boolean, message: string, data?: any): void {
+export function debugLog(debug: boolean, message: string, data?: unknown): void {
   if (debug) {
+    // eslint-disable-next-line no-console
     console.log(`[SecretLinksSDK] ${message}`, data || '');
   }
 }

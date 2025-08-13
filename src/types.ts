@@ -34,7 +34,7 @@ export interface LinkCallbacks {
 export interface PayloadData {
   type: 'ping' | 'webhook';
   timestamp: number;
-  data: any;
+  data: unknown;
   metadata?: {
     source: string;
     userAgent?: string;
